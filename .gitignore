@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+daemon.log
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local Database (if ever moved to project root)
+lancedb_data/
+
+# For keeping root safe
+.api_key
+config.json

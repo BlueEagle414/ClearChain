@@ -1,0 +1,15 @@
+textual>=0.47.1
+appdirs>=1.4.4
+lancedb>=0.5.0
+pyarrow>=14.0.1
+langchain-text-splitters>=0.0.1
+partialjson>=0.1.1
+keyring>=24.3.0
+transformers>=4.37.2
+torch>=2.2.0
+pydantic>=2.6.1
+tenacity>=8.2.3
+httpx>=0.26.0
+openai>=1.40.0
+google-genai>=0.3.0
+pyyaml>=6.0.1
