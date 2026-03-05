@@ -2,7 +2,7 @@
 
 # ClearChain
 
-ClearChain is a highly secure, terminal-based Chain of Verification (CoVe) system designed to deliver strictly verified, fact-grounded LLM responses. Built with a focus on privacy and data integrity, ClearChain leverages a hybrid architecture—combining local HuggingFace models for security and intent routing with top-tier API models (Gemini, OpenAI, or local Ollama) for reasoning and synthesis. It aims to be lightweight and work alongside your local models and/or your API.
+ClearChain is a robust, highly secure, TUI-based Chain of Verification (CoVe) system designed to deliver strictly verified, fact-grounded LLM responses. Built with a focus on privacy and data integrity, ClearChain acts as an interactive AI gateway—leveraging a hybrid architecture that combines local HuggingFace models for security and intent routing with top-tier API models (Gemini, OpenAI, or local Ollama) for reasoning and synthesis.
 
 By forcing the LLM to interrogate its own drafts against a local LanceDB vector knowledge base, ClearChain systematically catches and eliminates hallucinations before they ever reach the user.
 
