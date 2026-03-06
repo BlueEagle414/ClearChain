@@ -1,4 +1,6 @@
-![Alt text](ClearChain1.png)
+<p align="center">
+  <img src="ClearChain1.png" alt="ClearChain image" width="600" height="600" />
+</p>
 
 # ClearChain
 
