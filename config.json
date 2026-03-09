@@ -1,0 +1,30 @@
+{
+    "text_provider": "gemini",
+    "embedding_provider": "gemini",
+    "similarity_threshold": 0.75,
+    "confidence_threshold": 0.8,
+    "primary_model": "gemini-3.1-pro-preview",
+    "json_model": "gemini-3.1-pro-preview",
+    "embedding_model": "models/gemini-embedding-001",
+    "last_embedding_model": "",
+    "use_local_security": true,
+    "use_local_routing": true,
+    "local_security_model": "local_onnx_models/security_model_int8",
+    "local_routing_model": "local_onnx_models/routing_model_int8",
+    "domain_labels": [
+        "technology",
+        "cybersecurity",
+        "networking",
+        "software development",
+        "hardware",
+        "general inquiry"
+    ],
+    "tag_labels": [
+        "configuration",
+        "troubleshooting",
+        "architecture",
+        "performance",
+        "security policy",
+        "legacy system"
+    ]
+}
