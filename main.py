@@ -3,6 +3,7 @@ import sys
 import getpass
 import asyncio
 import logging
+import argparse
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -18,6 +19,8 @@ from db.database import init_db, flush_all_data, add_tech_spec
 from core.local_models import local_models
 from config import config, save_config, USER_DATA_DIR
 
+from cli import run_cli
+
 log_file_path = os.path.join(USER_DATA_DIR, "daemon.log")
 logging.basicConfig(
     filename=log_file_path,
@@ -29,7 +32,17 @@ if os.path.exists(log_file_path):
     os.chmod(log_file_path, 0o600)
 
 def get_api_key_sync():
-    if config.get("llm_provider", "gemini").lower() == "ollama":
+    text_prov = config.get("text_provider", "gemini").lower()
+    embed_prov = config.get("embedding_provider", "gemini").lower()
+    
+    def is_local(prov):
+        if prov == "ollama":
+            return True
+        if prov == "openai" and config.get("openai_base_url"):
+            return True
+        return False
+        
+    if is_local(text_prov) and is_local(embed_prov):
         return None
         
     print("\nInitializing ClearChain Daemon...")
@@ -42,29 +55,15 @@ def get_api_key_sync():
             set_api_key(key.strip())
             return key.strip()
             
-    print("API Key is strictly required for this provider. Exiting.")
+    print("API Key is strictly required for cloud providers. Exiting.")
     sys.exit(1)
 
 class WipeDbScreen(ModalScreen[bool]):
     CSS = """
-    WipeDbScreen {
-        align: center middle;
-    }
-    #wipe_dialog {
-        padding: 1 2;
-        width: 50;
-        height: 15;
-        border: thick $error 80%;
-        background: $surface;
-    }
-    #wipe_buttons {
-        height: 3;
-        align: center middle;
-        margin-top: 2;
-    }
-    Button {
-        margin: 0 1;
-    }
+    WipeDbScreen { align: center middle; }
+    #wipe_dialog { padding: 1 2; width: 50; height: 15; border: thick $error 80%; background: $surface; }
+    #wipe_buttons { height: 3; align: center middle; margin-top: 2; }
+    Button { margin: 0 1; }
     """
     def compose(self) -> ComposeResult:
         with Vertical(id="wipe_dialog"):
@@ -81,30 +80,12 @@ class WipeDbScreen(ModalScreen[bool]):
 
 class AddDataScreen(ModalScreen[tuple[str, str]]):
     CSS = """
-    AddDataScreen {
-        align: center middle;
-    }
-    #dialog {
-        padding: 1 2;
-        width: 60;
-        height: 20;
-        border: thick $background 80%;
-        background: $surface;
-    }
-    .input_field {
-        margin-bottom: 1;
-    }
-    #details_input {
-        height: 1fr;
-        margin-bottom: 1;
-    }
-    #buttons {
-        height: 3;
-        align: center middle;
-    }
-    Button {
-        margin: 0 1;
-    }
+    AddDataScreen { align: center middle; }
+    #dialog { padding: 1 2; width: 60; height: 20; border: thick $background 80%; background: $surface; }
+    .input_field { margin-bottom: 1; }
+    #details_input { height: 1fr; margin-bottom: 1; }
+    #buttons { height: 3; align: center middle; }
+    Button { margin: 0 1; }
     """
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog"):
@@ -127,7 +108,6 @@ class AddDataScreen(ModalScreen[tuple[str, str]]):
             self.dismiss(None)
 
 class CoVeApp(App):
-    
     CSS = """
     #main_container { height: 100%; }
     #left_pane { width: 65%; height: 100%; border-right: solid green; }
@@ -203,7 +183,6 @@ class CoVeApp(App):
                 self.run_wipe_worker()
             else:
                 self.notify("Database wipe cancelled.", severity="information")
-
         self.push_screen(WipeDbScreen(), check_reply)
 
     async def action_abort(self) -> None:
@@ -230,7 +209,6 @@ class CoVeApp(App):
             if data is not None:
                 entity, details = data
                 self.run_add_data_worker(entity, details)
-
         self.push_screen(AddDataScreen(), check_reply)
 
     @work(exclusive=True)
@@ -325,12 +303,20 @@ class CoVeApp(App):
         await asyncio.to_thread(logging.info, msg.strip())
 
 def main():
+    parser = argparse.ArgumentParser(description="ClearChain Daemon")
+    parser.add_argument("--cli", action="store_true", help="Run in lightweight CLI mode instead of the TUI")
+    args = parser.parse_args()
+
     api_key = get_api_key_sync()
-    app = CoVeApp(api_key)
-    app.run()
     
-    if app.fatal_error:
-        print(f"\n[!] DAEMON CRASHED DURING STARTUP:\n{app.fatal_error}\n")
+    if args.cli:
+        asyncio.run(run_cli(api_key))
+    else:
+        app = CoVeApp(api_key)
+        app.run()
+        
+        if app.fatal_error:
+            print(f"\n[!] DAEMON CRASHED DURING STARTUP:\n{app.fatal_error}\n")
 
 if __name__ == "__main__":
     main()
