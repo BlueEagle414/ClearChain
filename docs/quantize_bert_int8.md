@@ -2,6 +2,9 @@
 
 ClearChain uses local BERT models to handle **Security** (detecting prompt injections) and **Routing** (figuring out what your query is about). By default, these models load in full precision (FP32), which can eat up a good chunk of your RAM or VRAM.
 
+**Do note that if you quantize these models, that you're still technically trading off accuracy and/or security for more wiggle room (RAM/VRAM). I haven't
+test extensively yet so keep that in mind.**
+
 **Quantizing to INT8** compresses these models so they use about **75% less memory** and run faster, with almost zero loss in accuracy. 
 
 Here is the easiest way to enable INT8 quantization in ClearChain using the industry-standard `bitsandbytes` library.
