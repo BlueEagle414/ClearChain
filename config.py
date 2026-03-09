@@ -2,20 +2,22 @@ import json
 import os
 import appdirs
 
-# Permission errors
 USER_DATA_DIR = appdirs.user_data_dir("cove_verifier", "ClearChain")
 os.makedirs(USER_DATA_DIR, mode=0o700, exist_ok=True)
 
 CONFIG_PATH = os.path.join(USER_DATA_DIR, "config.json")
 
 DEFAULT_CONFIG = {
-    "llm_provider": "gemini",
+    "text_provider": "gemini",
+    "embedding_provider": "gemini",
     "similarity_threshold": 0.75,
     "confidence_threshold": 0.8,
     "primary_model": "gemini-3.1-pro-preview",
     "json_model": "gemini-3.1-pro-preview",
     "embedding_model": "models/gemini-embedding-001",
     "last_embedding_model": "", 
+    "ollama_base_url": "http://localhost:11434/api",
+    "openai_base_url": None,
     "use_local_security": True,
     "use_local_routing": True,
     "local_security_model": "protectai/deberta-v3-base-prompt-injection-v2",
@@ -33,6 +35,14 @@ def load_config():
     try:
         with open(CONFIG_PATH, "r") as f:
             loaded = json.load(f)
+            
+            # Backward-compatibility check for older configs
+            if "llm_provider" in loaded:
+                if "text_provider" not in loaded:
+                    loaded["text_provider"] = loaded["llm_provider"]
+                if "embedding_provider" not in loaded:
+                    loaded["embedding_provider"] = loaded["llm_provider"]
+            
             # Merge with defaults in case new keys were added
             for k, v in DEFAULT_CONFIG.items():
                 if k not in loaded:
