@@ -3,7 +3,8 @@ import threading
 from config import config
 
 try:
-    from transformers import pipeline
+    from transformers import pipeline, AutoTokenizer
+    from optimum.onnxruntime import ORTModelForSequenceClassification
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
@@ -23,24 +24,37 @@ class LocalModelManager:
     def initialize_models(self):
         if config.get("use_local_security") and self.security_pipeline is None:
             if not TRANSFORMERS_AVAILABLE:
-                raise RuntimeError("Local security enforced but transformers library is missing. Stopping to prevent data leakage to API.")
+                raise RuntimeError("Local security enforced but transformers/optimum library is missing. Stopping to prevent data leakage to API.")
             else:
-                logging.info("Loading DistilRoBERTa Security Model...")
+                logging.info("Loading INT8 ONNX Security Model...")
+                model_path = config["local_security_model"]
+                
+                # Load ONNX model and tokenizer
+                tokenizer = AutoTokenizer.from_pretrained(model_path)  # nosec B615
+                model = ORTModelForSequenceClassification.from_pretrained(model_path)  # nosec B615
+                
                 self.security_pipeline = pipeline(
                     "text-classification", 
-                    model=config["local_security_model"], 
-                    device_map="auto"
+                    model=model, 
+                    tokenizer=tokenizer,
+                    device=-1 # -1 forces CPU, which is optimal for dynamic INT8
                 )
 
         if config.get("use_local_routing") and self.routing_pipeline is None:
             if not TRANSFORMERS_AVAILABLE:
-                raise RuntimeError("Local routing enforced but transformers library is missing. Halting to prevent data leakage to API.")
+                raise RuntimeError("Local routing enforced but transformers/optimum library is missing. Halting to prevent data leakage to API.")
             else:
-                logging.info("Loading MiniLM Routing & Classification Model...")
+                logging.info("Loading INT8 ONNX Routing Model...")
+                model_path = config["local_routing_model"]
+                
+                tokenizer = AutoTokenizer.from_pretrained(model_path)  # nosec B615
+                model = ORTModelForSequenceClassification.from_pretrained(model_path)  # nosec B615
+                
                 self.routing_pipeline = pipeline(
                     "zero-shot-classification", 
-                    model=config["local_routing_model"], 
-                    device_map="auto"
+                    model=model, 
+                    tokenizer=tokenizer,
+                    device=-1
                 )
 
     def detect_prompt_injection(self, text: str, threshold: float = 0.85) -> bool:
