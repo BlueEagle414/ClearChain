@@ -38,4 +38,10 @@ ClearChain is designed to be completely model-agnostic. You can instantly switch
 * **OpenAI** (With native structured JSON output compliance)
 * **Ollama** (For a 100% offline, fully local deployment)
 
+## Currently Working On:
+
+* **Security**: Aiming to make ClearChain more robust and secure, outside of what is already there
+* **Dependents**: Aiming to cut down things ClearChain is dependent on (ex: LangChain chunking)
+* **Testing**: Testing various models to ensure ClearChain is as good as it can get, and testing the quantizations (INT8) of the BERT models
+
 ***
