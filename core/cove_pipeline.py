@@ -8,15 +8,14 @@ from core.llm_service import (
     detect_prompt_injection, detect_needs_verification, classify_content
 )
 from core.stream_parser import clean_and_parse_json_stream
-from db.database import get_context, get_cached_result, save_cached_result
+from db.database import get_context, get_cache_candidates, save_cached_result
+from core.cache_validator import CacheValidator
 from config import config
 
-# Load externalized prompts
 PROMPTS_PATH = os.path.join(os.path.dirname(__file__), "prompts.yaml")
 with open(PROMPTS_PATH, "r", encoding="utf-8") as f:
     prompts = yaml.safe_load(f)
 
-# Semaphore to limit concurrent API calls during Phase 0 to prevent rate limits
 api_semaphore = asyncio.Semaphore(2)
 
 async def bounded_call(coro):
@@ -33,12 +32,18 @@ async def execute_cove(
     try:
         normalized_query = query.strip().lower()
         
-        # Step -1: Semantic Cache Check
-        cached_result = await get_cached_result(provider, normalized_query)
-        if cached_result:
-            await log_callback("[*] CACHE HIT: Semantic match found in local cache. Serving immediately.\n")
-            await final_answer_callback(cached_result.get("final_answer", ""))
-            return cached_result
+        # Step -1: Semantic Cache Check with Multi-Tier Validation
+        candidates = await get_cache_candidates(provider, normalized_query)
+        
+        for candidate in candidates:
+            is_valid = await CacheValidator.validate_candidate(normalized_query, candidate["query_text"])
+            if is_valid:
+                await log_callback(f"[*] CACHE HIT: Verified semantic & intent match found (Sim: {candidate['similarity']:.2f}).\n")
+                await final_answer_callback(candidate["response_json"].get("final_answer", ""))
+                return candidate["response_json"]
+                
+        if candidates:
+            await log_callback("[*] Cache candidates found but rejected due to constraint/intent mismatch. Proceeding to generation.\n")
 
         await log_callback("[*] Running parallel Security Check, Context Retrieval, and Classification...")
         
