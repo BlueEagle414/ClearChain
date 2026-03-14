@@ -112,15 +112,15 @@ async def add_tech_spec(provider, entity: str, details: str):
     async with db_write_lock:
         await tbl.add(data_to_insert)
         
-    # Cache Invalidation Strategy
-    logging.info("Invalidating cove_cache due to new tech_specs...")
-    try:
-        cache_tbl = await db.open_table("cove_cache")
-        cache_schema = cache_tbl.schema
-        await db.drop_table("cove_cache", ignore_missing=True)
-        await db.create_table("cove_cache", schema=cache_schema)
-    except Exception as e:
-        logging.error(f"Failed to invalidate cache: {e}")
+        # Cache Invalidation Strategy (Moved inside lock to prevent race conditions)
+        logging.info("Invalidating cove_cache due to new tech_specs...")
+        try:
+            cache_tbl = await db.open_table("cove_cache")
+            cache_schema = cache_tbl.schema
+            await db.drop_table("cove_cache", ignore_missing=True)
+            await db.create_table("cove_cache", schema=cache_schema)
+        except Exception as e:
+            logging.error(f"Failed to invalidate cache: {e}")
 
 async def get_context(provider, query: str) -> tuple[str, float]:
     query_embedding = await provider.generate_embedding(query)
@@ -144,7 +144,7 @@ async def get_context(provider, query: str) -> tuple[str, float]:
     context_lines = [f"- {row['entity']}: {row['details']}" for row in results]
     return "\n".join(context_lines), highest_score
 
-async def get_cached_result(provider, query: str, threshold: float = 0.95) -> dict | None:
+async def get_cache_candidates(provider, query: str, threshold: float = 0.88, limit: int = 3) -> list[dict]:
     try:
         db = await get_db_connection()
         tbl = await db.open_table("cove_cache")
@@ -155,19 +155,23 @@ async def get_cached_result(provider, query: str, threshold: float = 0.95) -> di
             query_builder = await query_builder
             
         try:
-            results = await query_builder.distance_type("cosine").limit(1).to_list()
+            results = await query_builder.distance_type("cosine").limit(limit).to_list()
         except AttributeError:
-            results = await query_builder.metric("cosine").limit(1).to_list()
+            results = await query_builder.metric("cosine").limit(limit).to_list()
             
-        if results:
-            similarity = 1.0 - results[0]["_distance"]
-            logging.debug(f"Cache similarity score: {similarity:.4f}")
+        candidates = []
+        for res in results:
+            similarity = 1.0 - res["_distance"]
             if similarity >= threshold:
-                logging.info("Semantic cache match threshold met!")
-                return json.loads(results[0]["response_json"])
+                candidates.append({
+                    "query_text": res["query_text"],
+                    "response_json": json.loads(res["response_json"]),
+                    "similarity": similarity
+                })
+        return candidates
     except Exception as e:
-        logging.error(f"Failed to retrieve cached result: {e}")
-    return None
+        logging.error(f"Failed to retrieve cache candidates: {e}")
+    return []
 
 async def save_cached_result(provider, query: str, result: dict):
     try:
